@@ -31,18 +31,52 @@ func main() {
 
 	
 
-	// Define a filter to find documents where parentId is an ObjectId and data.projectNumber equals "ddd"
 	filter := bson.D{
-		{"parentId", bson.D{{"$type", "objectId"}}},
-		{"data.projectNumber", "6110CH220211"},
+		{"parentId", bson.M{"$eq": nil}},
+		{"$or", bson.A{
+			bson.M{"data.projectType": "Project"},
+			bson.M{"data.projectType": ""},
+			bson.M{"data.projectType": bson.M{"$exists": false}},
+		}},
 	}
 
-	// Delete the documents matching the filter
-	deleteResult, err := collection.DeleteMany(context.TODO(), filter)
+	// Define an update to set data.projectType to "Historical Project" for all matched documents
+	update := bson.D{
+		{"$set", bson.D{
+			{"data.projectType", "Historical Project"},
+		}},
+	}
+
+	// Update all documents matching the filter
+	updateResult, err := collection.UpdateMany(context.TODO(), filter, update)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Deleted %v documents\n", deleteResult.DeletedCount)
+	fmt.Printf("Matched %v root documents and modified root %v documents.\n", updateResult.MatchedCount, updateResult.ModifiedCount)
+
+	filter = bson.D{
+		{"$and", bson.A{
+			bson.M{"parentId": bson.M{"$ne": nil}},
+			bson.M{"data.projectType": "Historical project"},
+		}},
+	}
+
+	// Define an update to set data.projectType to "Historical Project" for all matched documents
+	update = bson.D{
+		{"$set", bson.D{
+			{"data.projectType", "Historical Project"},
+		}},
+	}
+
+	// Update all documents matching the filter
+	updateResult, err = collection.UpdateMany(context.TODO(), filter, update)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Matched %v child documents and modified child %v documents.\n", updateResult.MatchedCount, updateResult.ModifiedCount)
+
+
 }
 
